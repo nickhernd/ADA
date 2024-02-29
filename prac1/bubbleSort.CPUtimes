@@ -1,7 +1,0 @@
-# BubbleSort CPU times in milliseconds:
-# Size 	 CPU time (ms.)
-# ----------------------------
-32768		2774.96
-65536		11355.3
-131072		49126.7
-262144		
