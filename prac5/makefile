@@ -1,5 +1,8 @@
 #JAIME HERNÁNDEZ DELGADO 48776654W
+
 OPTS = -Wall -O3 -std=c++0x
+
+all: pow2 pow2.steps graphs
 
 pow2: pow2.cc
 	g++ ${OPTS} -o pow2 pow2.cc 
@@ -9,8 +12,6 @@ pow2.steps: pow2
 
 graphs: pow2.steps pow2.gnuplot
 	gnuplot pow2.gnuplot
-
-all: pow2 pow2.steps graphs
 
 tar: pow2.cc pow2.gnuplot makefile
 	tar cvfz 48776654W.tar.gz pow2.cc pow2.gnuplot makefile
