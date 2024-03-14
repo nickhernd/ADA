@@ -21,6 +21,7 @@ unsigned long pow2_2(unsigned number){
 
 	if(number%2 == 0)
 		return (pow2_2(number/2)) * (pow2_2(number/2));
+
  	return 2 * (pow2_2(number/2)) * (pow2_2(number/2));
 }
 
@@ -28,6 +29,7 @@ unsigned long pow2_3(unsigned number){
 	STEPS3++;
 	if(number == 0)
 		return 1;
+	
 	return pow2_3(number-1) + pow2_3(number-1);
 }
 
