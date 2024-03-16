@@ -9,48 +9,57 @@ unsigned int STEPS3 = 0;
 
 // Coste: \Theta(n)
 unsigned long pow2_1(unsigned n) {
-    STEPS1++;
+    unsigned long res;
 
     if (n == 0)
         return 1;
-    
-    return 2 * pow2_1(n - 1);
+
+    res = 2 * pow2_1(n - 1);
+    STEPS1++;
+        
+    return res;
 }
 
 // Coste: \Theta(log n)
 unsigned long pow2_2(unsigned n) {
-	STEPS2++;
+    unsigned long res;
 
     if (n == 0) return 1;
-
     if (n == 1) return 2;
 
-    if (n % 2 == 0)
-        return pow2_2(n / 2) * pow2_2(n / 2);
-    else
-        return pow2_2((n - 1) / 2) * pow2_2((n - 1) / 2) * 2;
-    
+    if (n % 2 == 0) {
+        res = pow2_2(n / 2) * pow2_2(n / 2);
+    } else {
+        res = pow2_2((n - 1) / 2) * pow2_2((n - 1) / 2) * 2;
+    }
+
+    STEPS2++; 
+
+    return res;
 }
 
 // Coste: \Theta (2^n)
 unsigned long pow2_3(unsigned n){
-	STEPS3++;
+    unsigned long res;
+
 	if(n == 0)
 		return 1;
 	
-	return pow2_3(n-1) + pow2_3(n-1);
+    res = pow2_3(n-1) + pow2_3(n-1);
+    STEPS3++;
+
+	return res;
 }
 
 int main (){
 
-	for (unsigned number = 1; number < 32; number++) {
-        STEPS1 = STEPS2 = STEPS3 = 0;
+	for (unsigned exp = 5; exp <= 30; exp++) {
 		
-        pow2_1(number);
-        cout << number << "\t" << STEPS1 << "\t";
-        pow2_2(number);
+        pow2_1(exp);
+        cout << exp << "\t" << STEPS1 << "\t";
+        pow2_2(exp);
         cout << STEPS2 << "\t";
-        pow2_3(number);
+        pow2_3(exp);
         cout << STEPS3 << endl;
     }
 
