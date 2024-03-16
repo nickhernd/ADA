@@ -53,14 +53,14 @@ unsigned long pow2_3(unsigned n){
 
 int main (){
 
-	for (unsigned exp = 5; exp <= 30; exp++) {
+	for (unsigned exp = 10; exp <= 30; exp++) {
 		
         pow2_1(exp);
-        cout << exp << "\t" << STEPS1 << "\t";
+        cout << exp << "\t" << STEPS1*100 << "\t";
         pow2_2(exp);
-        cout << STEPS2 << "\t";
+        cout << STEPS2*100 << "\t";
         pow2_3(exp);
-        cout << STEPS3 << endl;
+        cout << STEPS3/1000 << endl;
     }
 
 	return 0;

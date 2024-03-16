@@ -1,8 +1,8 @@
 #JAIME HERNÁNDEZ DELGADO  48776654W
 
 set terminal png
-set xrange [5:30]
-set yrange [0:50]
+set xrange [10:30]
+set yrange [0:100000]
 set output "pow2.png"
 
 set xlabel "n"
