@@ -9,46 +9,37 @@ unsigned int STEPS3 = 0;
 
 // Coste: \Theta(n)
 unsigned long pow2_1(unsigned n) {
-    unsigned long res;
+    STEPS1++;
 
     if (n == 0)
         return 1;
-
-    res = 2 * pow2_1(n - 1);
-    STEPS1++;
         
-    return res;
+    return pow2_1(n - 1) * 2;
 }
 
-// Coste: \Theta(log n)
+// Coste: \Omicron(log n)
 unsigned long pow2_2(unsigned n) {
-    unsigned long res;
+    STEPS2++; 
 
     if (n == 0) return 1;
     if (n == 1) return 2;
 
     if (n % 2 == 0) {
-        res = pow2_2(n / 2) * pow2_2(n / 2);
-    } else {
-        res = pow2_2((n - 1) / 2) * pow2_2((n - 1) / 2) * 2;
-    }
+        return pow2_2(n / 2) * pow2_2(n / 2);
+    } 
 
-    STEPS2++; 
-
-    return res;
+    return pow2_2((n - 1) / 2) * pow2_2((n - 1) / 2) * 2;
 }
 
 // Coste: \Theta (2^n)
 unsigned long pow2_3(unsigned n){
-    unsigned long res;
+    STEPS3++;
 
 	if(n == 0)
 		return 1;
 	
-    res = pow2_3(n-1) + pow2_3(n-1);
-    STEPS3++;
-
-	return res;
+   return pow2_3(n-1) + pow2_3(n-1);
+    
 }
 
 int main (){

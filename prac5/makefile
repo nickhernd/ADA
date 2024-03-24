@@ -10,12 +10,11 @@ pow2: pow2.cc
 pow2.steps: pow2
 	./pow2 > pow2.steps
 
-graphs: pow2.steps pow2.gnuplot
-	gnuplot pow2.gnuplot
+graphs: pow2.steps pow2.gpi
+	gnuplot pow2.gpi
 
-tar: pow2.cc pow2.gnuplot makefile
-	tar cvfz 48776654W.tar.gz pow2.cc pow2.gnuplot makefile
-
+tar: pow2.cc pow2.gpi makefile
+	tar cvfz 48776654W.tar.gz pow2.cc pow2.gpi makefile
 clean: 
 	-rm pow2 pow2.steps fit.log *.png 
  
