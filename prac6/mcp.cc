@@ -83,13 +83,62 @@ int mcp_memo(vector<vector<int>>& map, vector<vector<int>>& memo) {
     return memo[rows-1][cols-1];
 }
 
-int mcp_it_matrix() {
-    return 0;
+int mcp_it_matrix(vector<vector<int>> &mapa, int n, int m) {
+    vector<vector<int>> Matrix(n, vector<int>(m));
+
+    Matrix[0][0] = mapa[0][0];
+    for (int i = 1; i < n; ++i) {
+        Matrix[i][0] = Matrix[i-1][0] + mapa[i][0];
+    }
+    for (int j = 1; j < m; ++j) {
+        Matrix[0][j] = Matrix[0][j-1] + mapa[0][j];
+    }
+
+    
+    for (int i = 1; i < n; ++i) {
+        for (int j = 1; j < m; ++j) {
+            int S1 = Matrix[i-1][j];
+            int S2 = Matrix[i][j-1];
+            int S3 = Matrix[i-1][j-1];
+            Matrix[i][j] = min({S1, S2, S3}) + mapa[i][j];
+        }
+    }
+
+    return Matrix[n-1][m-1];
 }
 
-int mcp_it_vector() {
-    return 0;
+
+int mcp_it_vector(vector<vector<int>> &mapa, int n, int m) {
+    vector<int> actual(m);
+    vector<int> siguiente(m);
+
+    // Inicializar el vector actual con los valores de la primera fila del mapa
+    for (int i = 0; i < m; ++i) {
+        actual[i] = mapa[0][i];
+    }
+
+    for (int s = 1; s < n; s++) {
+        // Calcular el primer elemento del vector siguiente
+        siguiente[0] = actual[0] + mapa[s][0];
+
+        // Calcular los valores del vector siguiente para cada columna de la fila actual
+        for (int i = 1; i < m; ++i) {
+            int S1 = (s > 0) ? actual[i] : INT_MAX; // Valor superior
+            int S2 = (i > 0) ? siguiente[i - 1] : INT_MAX; // Valor izquierdo
+            int S3 = (s > 0 && i > 0) ? actual[i - 1] : INT_MAX; // Valor diagonal superior izquierdo
+
+            // Calcular el mínimo entre los tres valores posibles para llegar a la posición (s, i)
+            siguiente[i] = mapa[s][i] + min({S1, S2, S3});
+        }
+
+        // Actualizar el vector actual con los valores del vector siguiente para la siguiente iteración
+        swap(actual, siguiente);
+    }
+
+    // Devolver el valor correspondiente a la última celda del camino mínimo
+    return actual[m - 1];
 }
+
 
 void print_path(int rows, int cols, vector<vector<int>>& memo_map) {
     vector<vector<char>> path(rows, vector<char>(cols, '.'));
@@ -208,19 +257,23 @@ int main(int argc, char *argv[]) {
 
     int memo = mcp_memo(mapa, memo_map);
     cout << memo << " ";
-    //int matrix = mcp_it_matrix();
-    cout << "?" << " ";
-    //int vector = mcp_it_vector();
-    cout << "?" << endl;
+    int matrix = mcp_it_matrix(mapa, rows, cols);
+    cout << matrix << " ";
+    int vector = mcp_it_vector(mapa, rows, cols);
+    cout << vector << endl;
 
-    if (show_table) {
-        cout << "?" << endl;
+    if (show_path_2D) {
+        print_path(rows, cols, memo_map);
+        cout << matrix << endl;
     }
 
-    // Mostrar el camino mínimo en formato 2D si se solicita
-    if (show_path_2D) {
-        cout << "?" << endl;
-        //print_path(rows, cols, memo_map);
+    if (show_table) {
+        for(int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                cout << memo_map[i][j] << " ";
+            }
+        cout << endl;
+        }
     }
 
     return 0;
