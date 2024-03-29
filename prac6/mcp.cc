@@ -29,71 +29,47 @@ vector<vector<int>> read_map(const string& filename) {
 }
 
 int mcp_naive(vector<vector<int>>& mapa, int m, int n) {
-    // Obtener las dimensiones del mapa
     int rows = mapa.size();
     int cols = mapa[0].size();
 
-    // Caso base: si estamos fuera de los límites del mapa, retornar infinito
     if (m < 0 || n < 0 || m >= rows || n >= cols) {
         return INT_MAX;
     }
 
-    // Caso base: si estamos en la casilla destino, retornar el valor de la casilla
     if (m == rows - 1 && n == cols - 1) {
         return mapa[m][n];
     }
 
-    // Calcular recursivamente el camino mínimo moviéndose hacia abajo, derecha y diagonalmente
     int move_down = mcp_naive(mapa, m + 1, n);
     int move_right = mcp_naive(mapa, m, n + 1);
     int move_diagonal = mcp_naive(mapa, m + 1, n + 1);
 
-    // Devolver el mínimo de los tres movimientos más la dificultad actual
     return mapa[m][n] + min({move_down, move_right, move_diagonal});
 }
 
 
-int mcp_memo(vector<vector<int>>& map, vector<vector<int>>& memo) {
-        
-        int rows = map.size();
+int mcp_memo(const vector<vector<int>>& mapa, int i, int j, vector<vector<int>>& memo) {
+    int n = mapa.size();
+    int m = mapa[0].size();
 
-        if(rows==0)
-            return 0;
+    if (i >= n || j >= m) 
+        return INT_MAX;
 
-        int cols = map[0].size();
+    if (i == n - 1 && j == m - 1) return mapa[i][j];
 
-        //vector<vector<int>> memo(rows,vector<int>(cols,0));
-        int i,j = 0;
-        
-        memo[0][0] = map[0][0];  
-        
-        for(i=1;i<cols;++i)
-            memo[0][i] = memo[0][i-1] + map[0][i];
-        
-        for(i=1;i<rows;++i)
-            memo[i][0] = memo[i-1][0] + map[i][0];
-        
-        
-        for(i=1;i<rows;++i) {
-            for(j=1;j<cols;++j)
-                memo[i][j] = map[i][j] + min({memo[i-1][j],memo[i][j-1], memo[i-1][j-1]});
-        }
-        
+    if (memo[i][j] != -1) return memo[i][j];
+
+    int right = mcp_memo(mapa, i, j + 1, memo);
+    int down = mcp_memo(mapa, i + 1, j, memo);
+    int diagonal = mcp_memo(mapa, i + 1, j + 1, memo);
+
+    memo[i][j] = mapa[i][j] + min({right, down, diagonal});
     
-    return memo[rows-1][cols-1];
+    return memo[i][j];
 }
 
-int mcp_it_matrix(vector<vector<int>> &mapa, int n, int m) {
-    vector<vector<int>> Matrix(n, vector<int>(m));
 
-    Matrix[0][0] = mapa[0][0];
-    for (int i = 1; i < n; ++i) {
-        Matrix[i][0] = Matrix[i-1][0] + mapa[i][0];
-    }
-    for (int j = 1; j < m; ++j) {
-        Matrix[0][j] = Matrix[0][j-1] + mapa[0][j];
-    }
-
+int mcp_it_matrix(vector<vector<int>> &mapa, int n, int m, vector<vector<int>>& Matrix) {
     
     for (int i = 1; i < n; ++i) {
         for (int j = 1; j < m; ++j) {
@@ -112,89 +88,97 @@ int mcp_it_vector(vector<vector<int>> &mapa, int n, int m) {
     vector<int> actual(m);
     vector<int> siguiente(m);
 
-    // Inicializar el vector actual con los valores de la primera fila del mapa
     for (int i = 0; i < m; ++i) {
         actual[i] = mapa[0][i];
     }
 
     for (int s = 1; s < n; s++) {
-        // Calcular el primer elemento del vector siguiente
         siguiente[0] = actual[0] + mapa[s][0];
-
-        // Calcular los valores del vector siguiente para cada columna de la fila actual
         for (int i = 1; i < m; ++i) {
-            int S1 = (s > 0) ? actual[i] : INT_MAX; // Valor superior
-            int S2 = (i > 0) ? siguiente[i - 1] : INT_MAX; // Valor izquierdo
-            int S3 = (s > 0 && i > 0) ? actual[i - 1] : INT_MAX; // Valor diagonal superior izquierdo
+            int S1;
+            if (s > 0) {
+                S1 = actual[i];
+            } else {
+                S1 = INT_MAX;
+            }
 
-            // Calcular el mínimo entre los tres valores posibles para llegar a la posición (s, i)
+            int S2;
+            if (i > 0) {
+                S2 = siguiente[i - 1];
+            } else {
+                S2 = INT_MAX;
+            }
+
+            int S3;
+            if (s > 0 && i > 0) {
+                S3 = actual[i - 1];
+            } else {
+                S3 = INT_MAX;
+            }
+
             siguiente[i] = mapa[s][i] + min({S1, S2, S3});
+            
         }
-
-        // Actualizar el vector actual con los valores del vector siguiente para la siguiente iteración
         swap(actual, siguiente);
     }
 
-    // Devolver el valor correspondiente a la última celda del camino mínimo
-    return actual[m - 1];
+    return actual[m-1];
 }
 
+int mcp_parser(vector<vector<int>>& mapa, vector<vector<char>>& path) {
+    int n = mapa.size();
+    int m = mapa[0].size();
+    
+    vector<vector<int>> map_parser(n, vector<int>(m, INT_MAX));
+    map_parser[0][0] = mapa[0][0];
 
-void print_path(int rows, int cols, vector<vector<int>>& memo_map) {
-    vector<vector<char>> path(rows, vector<char>(cols, '.'));
-
-    // Seguir el camino mínimo desde el final hasta el inicio
-    int current_row = rows - 1;
-    int current_col = cols - 1;
-    while (current_row != 0 || current_col != 0) {
-        // Marcar la casilla actual como parte del camino mínimo
-        path[current_row][current_col] = 'x';
-        
-        // Determinar la siguiente casilla en el camino mínimo
-        int min_neighbor = INT_MAX;
-        int next_row = current_row;
-        int next_col = current_col;
-
-        // Buscar el vecino con el valor mínimo en la tabla de memoización
-        for (int i = -1; i <= 1; ++i) {
-            for (int j = -1; j <= 1; ++j) {
-                int neighbor_row = current_row + i;
-                int neighbor_col = current_col + j;
-                if (neighbor_row >= 0 && neighbor_row < rows && neighbor_col >= 0 && neighbor_col < cols) {
-                    if (memo_map[neighbor_row][neighbor_col] < min_neighbor) {
-                        min_neighbor = memo_map[neighbor_row][neighbor_col];
-                        next_row = neighbor_row;
-                        next_col = neighbor_col;
-                    }
-                }
-            }
-        }
-
-        // Actualizar las coordenadas actuales
-        current_row = next_row;
-        current_col = next_col;
+    for (int j = 1; j < m; ++j) {
+        map_parser[0][j] = map_parser[0][j - 1] + mapa[0][j];
     }
 
-    // Marcar la casilla inicial como parte del camino mínimo
+    for (int i = 1; i < n; ++i) {
+        map_parser[i][0] = map_parser[i - 1][0] + mapa[i][0];
+    }
+
+    for (int i = 1; i < n; ++i) {
+        for (int j = 1; j < m; ++j) {
+            map_parser[i][j] = mapa[i][j] + min({map_parser[i - 1][j], map_parser[i][j - 1], map_parser[i - 1][j - 1]});
+        }
+    }
+
+    int row = n - 1, col = m - 1;
     path[0][0] = 'x';
 
-    // Mostrar el camino mínimo en formato 2D
-    for (int i = 0; i < rows; ++i) {
-        for (int j = 0; j < cols; ++j) {
-            cout << path[i][j];
+    while (row > 0 || col > 0) {
+        if (row == 0) {
+            col--;
+        } else if (col == 0) {
+            row--;
+        } else {
+            if (map_parser[row - 1][col] <= min(map_parser[row][col - 1], map_parser[row - 1][col - 1])) {
+                row--;
+            } else if (map_parser[row][col - 1] <= min(map_parser[row - 1][col], map_parser[row - 1][col - 1])) {
+                col--;
+            } else {
+                row--;
+                col--;
+            }
         }
-        cout << endl;
+        path[row][col] = 'x';
     }
+
+    path[n-1][m-1] = 'x';
+
+    return map_parser[n - 1][m - 1];
 }
 
-//Función principal
+
+
 int main(int argc, char *argv[]) {
-    //cambiar show table
     bool show_table = false;
     bool show_path_2D = false;
     bool ignore_naive = false;
 
-    // Verificar las opciones de la línea de comandos
     if (argc < 3) {
         cerr << "ERROR: missing filename.\n";
         cerr << "Usage:\n";
@@ -202,10 +186,8 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    // Variables para almacenar las opciones y el nombre del archivo
     string filename;
 
-    // Procesar las opciones de la línea de comandos
     for (int i = 1; i < argc; ++i) {
         string arg = argv[i];
         if (arg == "-t") {
@@ -224,7 +206,6 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    // Verificar que se haya proporcionado el nombre del archivo
     if (filename.empty()) {
         cerr << "ERROR: missing filename.\n";
         cerr << "Usage:\n";
@@ -232,7 +213,6 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    // Intentar abrir el archivo
     ifstream file(filename);
     if (!file.is_open()) {
         cerr << "ERROR: can’t open file: " << filename << ".\n";
@@ -241,13 +221,11 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    // Leer el mapa desde el archivo de entrada
     vector<vector<int>> mapa = read_map(filename);
     int rows = mapa.size();
     int cols = mapa[0].size();
     vector<vector<int>> memo_map(rows, vector<int>(cols, -1));
 
-    // Calcular la dificultad del camino más favorable utilizando los algoritmos
     if (!ignore_naive) {
         int naive = mcp_naive(mapa, 0, 0);
         cout << naive << " ";
@@ -255,22 +233,41 @@ int main(int argc, char *argv[]) {
         cout << "-" << " ";
     }
 
-    int memo = mcp_memo(mapa, memo_map);
+    int memo = mcp_memo(mapa, 0, 0, memo_map);
     cout << memo << " ";
-    int matrix = mcp_it_matrix(mapa, rows, cols);
+
+    vector<vector<int>> Matrix(rows, vector<int>(cols));
+
+    Matrix[0][0] = mapa[0][0];
+    for (int i = 1; i < rows; ++i) {
+        Matrix[i][0] = Matrix[i-1][0] + mapa[i][0];
+    }
+    for (int j = 1; j < cols; ++j) {
+        Matrix[0][j] = Matrix[0][j-1] + mapa[0][j];
+    }
+
+    int matrix = mcp_it_matrix(mapa, rows, cols, Matrix);
     cout << matrix << " ";
-    int vector = mcp_it_vector(mapa, rows, cols);
-    cout << vector << endl;
+    int vectorit = mcp_it_vector(mapa, rows, cols);
+    cout << vectorit << endl;
+
+    vector<vector<char>> path(rows, vector<char>(cols, '.'));
+    int parser = mcp_parser(mapa, path);
 
     if (show_path_2D) {
-        print_path(rows, cols, memo_map);
-        cout << matrix << endl;
+        for (int i = 0; i < rows; ++i) {
+            for (int j = 0; j < cols; ++j) {
+                cout << path[i][j];
+            }
+        cout << endl;
+        }
+        cout << parser << endl;
     }
 
     if (show_table) {
         for(int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
-                cout << memo_map[i][j] << " ";
+                cout << Matrix[i][j] << " ";
             }
         cout << endl;
         }
