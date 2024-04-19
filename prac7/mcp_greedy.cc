@@ -1,4 +1,4 @@
-// JAIME HERNÁNDEZ DELGADO 48776654W
+    // JAIME HERNÁNDEZ DELGADO 48776654W
 
 #include <iostream>
 #include <vector>
@@ -129,14 +129,12 @@ int mcp_greedy(const vector<vector<int>>& map) {
 }
 
 int main(int argc, char *argv[]) {
-    bool show_table = false;
     bool show_path_2D = false;
-    bool ignore_naive = false;
 
     if (argc < 3) {
         cerr << "ERROR: missing filename.\n";
         cerr << "Usage:\n";
-        cerr << "mcp [--p2D] [-t] [--ignore-naive] -f file\n";
+        cerr << "mcp [--p2D] [-t] -f file\n";
         return 1;
     }
 
