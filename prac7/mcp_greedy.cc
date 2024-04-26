@@ -28,25 +28,6 @@ vector<vector<int>> read_map(const string& filename) {
     return map;
 }
 
-int mcp_naive(vector<vector<int>>& mapa, int m, int n) {
-    int rows = mapa.size();
-    int cols = mapa[0].size();
-
-    if (m < 0 || n < 0 || m >= rows || n >= cols) {
-        return INT_MAX;
-    }
-
-    if (m == rows - 1 && n == cols - 1) {
-        return mapa[m][n];
-    }
-
-    int move_down = mcp_naive(mapa, m + 1, n);
-    int move_right = mcp_naive(mapa, m, n + 1);
-    int move_diagonal = mcp_naive(mapa, m + 1, n + 1);
-
-    return mapa[m][n] + min({move_down, move_right, move_diagonal});
-}
-
 int mcp_parser(vector<vector<int>>& mapa, vector<vector<char>>& path) {
     int n = mapa.size();
     int m = mapa[0].size();
@@ -94,38 +75,45 @@ int mcp_parser(vector<vector<int>>& mapa, vector<vector<char>>& path) {
     return map_parser[n - 1][m - 1];
 }
 
-int mcp_greedy(const vector<vector<int>>& map) {
-    int n = map.size();
-    int m = map[0].size();
-    int cost = 0;
+void mcp_greedy(const vector<vector<int>>& mapa, int &forward, int &backward) {
+    int n = mapa.size();
+    int m = mapa[0].size();
 
-    int i = 0, j = 0;
-    while (i < n - 1 || j < m - 1) {
-        cost += map[i][j];
-        int min_cost = map[i][j];
-        int next_i = i, next_j = j;
-
-        // Evaluar los tres movimientos posibles: derecha, abajo y diagonal
-        if (j < m - 1 && map[i][j + 1] < min_cost) {
-            min_cost = map[i][j + 1];
-            next_j = j + 1;
+    // Avanzando desde el origen hasta el destino
+    forward = mapa[0][0];
+    int row = 0, col = 0;
+    while (row != n - 1 || col != m - 1) {
+        if (row == n - 1) {
+            col++;
+        } else if (col == m - 1) {
+            row++;
+        } else {
+            if (mapa[row + 1][col] < mapa[row][col + 1]) {
+                row++;
+            } else {
+                col++;
+            }
         }
-        if (i < n - 1 && map[i + 1][j] < min_cost) {
-            min_cost = map[i + 1][j];
-            next_i = i + 1;
-            next_j = j;
-        }
-        if (i < n - 1 && j < m - 1 && map[i + 1][j + 1] < min_cost) {
-            min_cost = map[i + 1][j + 1];
-            next_i = i + 1;
-            next_j = j + 1;
-        }
-
-        i = next_i;
-        j = next_j;
+        forward += mapa[row][col];
     }
-    cost += map[i][j];
-    return cost;
+
+    // Retrocediendo desde el destino hasta el origen
+    backward = mapa[n - 1][m - 1];
+    row = n - 1, col = m - 1;
+    while (row != 0 || col != 0) {
+        if (row == 0) {
+            col--;
+        } else if (col == 0) {
+            row--;
+        } else {
+            if (mapa[row - 1][col] < mapa[row][col - 1]) {
+                row--;
+            } else {
+                col--;
+            }
+        }
+        backward += mapa[row][col];
+    }
 }
 
 int main(int argc, char *argv[]) {
@@ -134,7 +122,7 @@ int main(int argc, char *argv[]) {
     if (argc < 3) {
         cerr << "ERROR: missing filename.\n";
         cerr << "Usage:\n";
-        cerr << "mcp [--p2D] [-t] -f file\n";
+        cerr << "mcp_greedy [--p2D] -f file\n";
         return 1;
     }
 
@@ -149,7 +137,7 @@ int main(int argc, char *argv[]) {
         } else {
             cerr << "ERROR: unknown option " << arg << "\n";
             cerr << "Usage:\n";
-            cerr << "mcp [--p2D] [-t] [--ignore-naive] -f file\n";
+            cerr << "mcp_greedy [--p2D] -f file\n";
             return 1;
         }
     }
@@ -157,7 +145,7 @@ int main(int argc, char *argv[]) {
     if (filename.empty()) {
         cerr << "ERROR: missing filename.\n";
         cerr << "Usage:\n";
-        cerr << "mcp [--p2D] [-t] [--ignore-naive] -f file\n";
+        cerr << "mcp_greedy [--p2D] -f file\n";
         return 1;
     }
 
@@ -165,18 +153,19 @@ int main(int argc, char *argv[]) {
     if (!file.is_open()) {
         cerr << "ERROR: can’t open file: " << filename << ".\n";
         cerr << "Usage:\n";
-        cerr << "mcp [--p2D] [-t] [--ignore-naive] -f file\n";
+        cerr << "mcp_greedy [--p2D]    -f file\n";
         return 1;
     }
 
     vector<vector<int>> mapa = read_map(filename);
     int rows = mapa.size();
     int cols = mapa[0].size();
+    int forward = 0;
+    int backward = 0;
 
     vector<vector<char>> path(rows, vector<char>(cols, '.'));
-    int parser = mcp_parser(mapa, path);
-    int greedy = mcp_greedy(mapa);
-    cout << parser << " " << greedy << endl;
+    mcp_greedy(mapa, forward, backward);
+    cout << forward << " " << backward << endl;
 
     if (show_path_2D) {
         for (int i = 0; i < rows; ++i) {
