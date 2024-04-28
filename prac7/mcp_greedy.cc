@@ -28,93 +28,140 @@ vector<vector<int>> read_map(const string& filename) {
     return map;
 }
 
-int mcp_parser(vector<vector<int>>& mapa, vector<vector<char>>& path) {
+/*void printPath(const vector<vector<int>>& mapa, vector<vector<char>>& path) {
     int n = mapa.size();
     int m = mapa[0].size();
-    
-    vector<vector<int>> map_parser(n, vector<int>(m, INT_MAX));
-    map_parser[0][0] = mapa[0][0];
 
-    for (int j = 1; j < m; ++j) {
-        map_parser[0][j] = map_parser[0][j - 1] + mapa[0][j];
-    }
-
-    for (int i = 1; i < n; ++i) {
-        map_parser[i][0] = map_parser[i - 1][0] + mapa[i][0];
-    }
-
-    for (int i = 1; i < n; ++i) {
-        for (int j = 1; j < m; ++j) {
-            map_parser[i][j] = mapa[i][j] + min({map_parser[i - 1][j], map_parser[i][j - 1], map_parser[i - 1][j - 1]});
+    // Inicializar la matriz path con '.'
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < m; j++) {
+            path[i][j] = '.';
         }
     }
 
     int row = n - 1, col = m - 1;
-    path[0][0] = 'x';
+    path[row][col] = 'x';
 
-    while (row > 0 || col > 0) {
-        if (row == 0) {
-            col--;
-        } else if (col == 0) {
-            row--;
-        } else {
-            if (map_parser[row - 1][col] <= min(map_parser[row][col - 1], map_parser[row - 1][col - 1])) {
-                row--;
-            } else if (map_parser[row][col - 1] <= min(map_parser[row - 1][col], map_parser[row - 1][col - 1])) {
-                col--;
-            } else {
-                row--;
-                col--;
+    while (row != 0 || col != 0) {
+        int min_cost = INT_MAX;
+        int next_row = row, next_col = col;
+
+        // Evaluar los tres movimientos posibles: izquierda, arriba y diagonal
+        if (col > 0) {
+            int cost = mapa[row][col - 1];
+            if (cost < min_cost) {
+                min_cost = cost;
+                next_row = row;
+                next_col = col - 1;
             }
         }
+        if (row > 0) {
+            int cost = mapa[row - 1][col];
+            if (cost < min_cost) {
+                min_cost = cost;
+                next_row = row - 1;
+                next_col = col;
+            }
+        }
+        if (row > 0 && col > 0) {
+            int cost = mapa[row - 1][col - 1];
+            if (cost <= min_cost) {
+                min_cost = cost;
+                next_row = row - 1;
+                next_col = col - 1;
+            }
+        }
+
+        row = next_row;
+        col = next_col;
         path[row][col] = 'x';
     }
+}*/
 
-    path[n-1][m-1] = 'x';
-
-    return map_parser[n - 1][m - 1];
-}
-
-void mcp_greedy(const vector<vector<int>>& mapa, int &forward, int &backward) {
+void mcp_greedy(const vector<vector<int>>& mapa, int &forward, int &backward, vector<vector<char>>& path) {
     int n = mapa.size();
     int m = mapa[0].size();
 
     // Avanzando desde el origen hasta el destino
     forward = mapa[0][0];
     int row = 0, col = 0;
+    path[row][col] = 'x';
+
     while (row != n - 1 || col != m - 1) {
-        if (row == n - 1) {
-            col++;
-        } else if (col == m - 1) {
-            row++;
-        } else {
-            if (mapa[row + 1][col] < mapa[row][col + 1]) {
-                row++;
-            } else {
-                col++;
+        int min_cost = INT_MAX;
+        int next_row = row;
+        int next_col = col;
+
+        if (row < n - 1 && col < m - 1) {
+            if (mapa[row + 1][col + 1] < min_cost) {
+                min_cost = mapa[row + 1][col + 1];
+                next_row = row + 1;
+                next_col = col + 1;
             }
         }
+
+        if (col < m - 1) {
+            if (mapa[row][col + 1] < min_cost) {
+                min_cost = mapa[row][col + 1];
+                next_row = row;
+                next_col = col + 1;
+            }
+        }
+
+        if (row < n - 1) {
+            if (mapa[row + 1][col] < min_cost) {
+                min_cost = mapa[row + 1][col];
+                next_row = row + 1;
+                next_col = col;
+            }
+        }
+
+        row = next_row;
+        col = next_col;
+        path[row][col] = 'x';
         forward += mapa[row][col];
     }
 
     // Retrocediendo desde el destino hasta el origen
     backward = mapa[n - 1][m - 1];
     row = n - 1, col = m - 1;
+
     while (row != 0 || col != 0) {
-        if (row == 0) {
-            col--;
-        } else if (col == 0) {
-            row--;
-        } else {
-            if (mapa[row - 1][col] < mapa[row][col - 1]) {
-                row--;
-            } else {
-                col--;
+        int min_cost = INT_MAX;
+        int prev_row = row;
+        int prev_col = col;
+
+        if (row > 0 && col > 0) {
+            if (mapa[row - 1][col - 1] < min_cost) {
+                min_cost = mapa[row - 1][col - 1];
+                prev_row = row - 1;
+                prev_col = col - 1;
             }
         }
+
+        if (col > 0) {
+            if (mapa[row][col - 1] < min_cost) {
+                min_cost = mapa[row][col - 1];
+                prev_row = row;
+                prev_col = col - 1;
+            }
+        }
+
+        if (row > 0) {
+            if (mapa[row - 1][col] < min_cost) {
+                min_cost = mapa[row - 1][col];
+                prev_row = row - 1;
+                prev_col = col;
+            }
+        }
+
+        row = prev_row;
+        col = prev_col;
         backward += mapa[row][col];
     }
 }
+
+
 
 int main(int argc, char *argv[]) {
     bool show_path_2D = false;
@@ -164,7 +211,7 @@ int main(int argc, char *argv[]) {
     int backward = 0;
 
     vector<vector<char>> path(rows, vector<char>(cols, '.'));
-    mcp_greedy(mapa, forward, backward);
+    mcp_greedy(mapa, forward, backward, path);
     cout << forward << " " << backward << endl;
 
     if (show_path_2D) {
@@ -174,7 +221,7 @@ int main(int argc, char *argv[]) {
             }
         cout << endl;
         }
-        cout << parser << endl;
+        cout << min(forward, backward) << endl;
     }
 
     return 0;
