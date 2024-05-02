@@ -11,10 +11,9 @@
 using namespace std;
 
 // Lee el archivo del mapa
-vector<vector<int>> read_map(const string& filename) {
+vector<vector<int>> read_map(const string& filename, int &n, int &m) {
     ifstream file(filename);
 
-    int n, m;
     file >> n >> m;
     vector<vector<int>> map(n, vector<int>(m));
 
@@ -28,61 +27,73 @@ vector<vector<int>> read_map(const string& filename) {
     return map;
 }
 
-/*void printPath(const vector<vector<int>>& mapa, vector<vector<char>>& path) {
+#include <iostream>
+#include <vector>
+#include <limits>
+
+using namespace std;
+
+const int dx[] = {0, 1, 0, -1};  // Desplazamientos para los movimientos: derecha, abajo, izquierda, arriba
+const int dy[] = {1, 0, -1, 0};
+
+void backtrack(const vector<vector<int>>& mapa, vector<vector<bool>>& path, int x, int y, int cost, int& min_cost, int& nvisit, int& nexplored, int& nleaf, int& nunfeasible, int& nnot_promising) {
     int n = mapa.size();
     int m = mapa[0].size();
 
-    // Inicializar la matriz path con '.'
-    for (int i = 0; i < n; i++) {
-        for (int j = 0; j < m; j++) {
-            path[i][j] = '.';
+    if (x == n - 1 && y == m - 1) {
+        // Encontrado el destino
+        if (cost < min_cost) {
+            min_cost = cost;
+        }
+        return;
+    }
+
+    nvisit++;
+
+    if (path[x][y]) {
+        // Nodo ya visitado, no es prometedor
+        nnot_promising++;
+        nleaf++;
+        return;
+    }
+
+    path[x][y] = true;
+    nexplored++;
+
+    // Explorar los movimientos válidos
+    for (int i = 0; i < 4; i++) {
+        int nx = x + dx[i];
+        int ny = y + dy[i];
+
+        if (nx >= 0 && nx < n && ny >= 0 && ny < m) {
+            backtrack(mapa, path, nx, ny, cost + mapa[nx][ny], min_cost, nvisit, nexplored, nleaf, nunfeasible, nnot_promising);
+        } else {
+            nunfeasible++;
         }
     }
 
-    int row = n - 1, col = m - 1;
-    path[row][col] = 'x';
-
-    while (row != 0 || col != 0) {
-        int min_cost = INT_MAX;
-        int next_row = row, next_col = col;
-
-        // Evaluar los tres movimientos posibles: izquierda, arriba y diagonal
-        if (col > 0) {
-            int cost = mapa[row][col - 1];
-            if (cost < min_cost) {
-                min_cost = cost;
-                next_row = row;
-                next_col = col - 1;
-            }
-        }
-        if (row > 0) {
-            int cost = mapa[row - 1][col];
-            if (cost < min_cost) {
-                min_cost = cost;
-                next_row = row - 1;
-                next_col = col;
-            }
-        }
-        if (row > 0 && col > 0) {
-            int cost = mapa[row - 1][col - 1];
-            if (cost <= min_cost) {
-                min_cost = cost;
-                next_row = row - 1;
-                next_col = col - 1;
-            }
-        }
-
-        row = next_row;
-        col = next_col;
-        path[row][col] = 'x';
-    }
-}*/
-
-void mcp_bt() {
-
+    path[x][y] = false; // Backtracking
 }
 
+void mcp_bt(const vector<vector<int>>& mapa, vector<vector<bool>>& path, int& min_cost, int& nvisit, int& nexplored, int& nleaf, int& nunfeasible, int& nnot_promising) {    int n = mapa.size();
+    int m = mapa[0].size();
 
+    // Inicializar la matriz path con falsos
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < m; j++) {
+            path[i][j] = false;
+        }
+    }
+
+    min_cost = INT_MAX;
+    nvisit = 0;
+    nexplored = 0;
+    nleaf = 0;
+    nunfeasible = 0;
+    nnot_promising = 0;
+
+    backtrack(mapa, path, 0, 0, 0, min_cost, nvisit, nexplored, nleaf, nunfeasible, nnot_promising);
+}
 
 int main(int argc, char *argv[]) {
     bool show_path_2D = false;
@@ -132,23 +143,17 @@ int main(int argc, char *argv[]) {
     clock_t t;
     t = clock();
 
-    vector<vector<int>> mapa = read_map(filename);
-    int rows = mapa.size();
-    int cols = mapa[0].size();
-    int difficulty = 0;
-    int nodos_visit = 0;
-    int nodos_explored = 0;
-    int nodos_leaf = 0;
-    int nodos_unfeasable = 0;
-    int nodos_notPromising = 0;
+    int n, m = 0;
+    vector<vector<int>> mapa = read_map(filename, n, m);
+    int min_cost, nvisit, nexplored, nleaf, nunfeasible, nnot_promising = 0;
 
-    vector<vector<char>> path(rows, vector<char>(cols, '.'));
+    vector<vector<bool>> path(n, vector<bool>(m, false));
 
-    void mcp_bt(int &difficulty, int &nodos_visit, int &nodos_explored, int &nodos_leaf);
+    mcp_bt(mapa, path, min_cost, nvisit, nexplored, nleaf, nunfeasible, nnot_promising);
     t = clock() - t;
 
-    cout << difficulty << endl;
-    cout << nodos_visit << " " << nodos_explored << " " << nodos_leaf << " " << nodos_unfeasable << " " << nodos_notPromising << endl; 
+    cout << min_cost << endl;
+    cout << "<" << nvisit << " " << nexplored << " " << nleaf << " " << nunfeasible << " " << nnot_promising << ">" << endl; 
     cout << t;
     if (show_path_2D) {
     
