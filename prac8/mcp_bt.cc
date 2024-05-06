@@ -1,4 +1,4 @@
-    // JAIME HERNÁNDEZ DELGADO 48776654W
+// JAIME HERNÁNDEZ DELGADO 48776654W
 
 #include <iostream>
 #include <vector>
@@ -27,73 +27,139 @@ vector<vector<int>> read_map(const string& filename, int &n, int &m) {
     return map;
 }
 
-#include <iostream>
-#include <vector>
-#include <limits>
+// Cota optimista -> programacion dinamica
+// Almacenar en el vector los movimientos, para hacer el árbol
+// Un nodo hoja será cuando se llegue al final
+//          En caso contrario seguir expandiendo
 
-using namespace std;
+/*
+mcp_bt(mapa, fila, columna)
 
-const int dx[] = {0, 1, 0, -1};  // Desplazamientos para los movimientos: derecha, abajo, izquierda, arriba
-const int dy[] = {1, 0, -1, 0};
+    solucion parcial
+        variables --> vector<vector<bool>> &visited, unsigned x, unsigned y, unsigned current_cost
+        Posible uso -> hacer un vector de los movimientos
+            problema: que se de bucle, ej (-> | -> | <-)
+            solución: vector<vector<bool>> &visited
+        if(x == n-1 && y = m-1) {
+            //Fulla
+        }
 
-void backtrack(const vector<vector<int>>& mapa, vector<vector<bool>>& path, int x, int y, int cost, int& min_cost, int& nvisit, int& nexplored, int& nleaf, int& nunfeasible, int& nnot_promising) {
+    Mejor solucion hasta el momento
+        &bestCost, vector<vector<bool>> &bestPath --> bestCost inicializarlo a infinito
+        
+    enum Step{N, S, E, O, NO, NE, SE, SO} --> 
+
+            Ejemplo: switch(i) {
+                case N:
+                    incx=-1;
+                    incy =1;
+                    break;
+                case NE:
+                    (...)
+                    break;
+            }
+        Importante  --> mirar que no nos salimos del mapa
+            En caso de estar dentro del mapa comprobar que no haya sido visitada
+
+            if(!visited[newx][newy]...) {
+                visited[newx][newy] = true;
+                mcp_bt(..., newx, newy, visited, currentCost + mapa[newx][newy])
+            }
+
+    Mejoras:
+        Cota pesimista inicial -> programacion dinámica con 3 movimientos (práctica 6)
+        Cotas optimista:
+            1) Camino actual -> guardar el valor minimo de los caminos y compararlo con el camino que se esta realizando, actual > anterior :: poda
+            2) Asumir que las casillas que quedan max(n-1-x, m-1-y) * (minimo valor del mapa --> cogerlo cuando de se hace un registro del mapa)
+            3) Ma x(suma(min_columnas_restantes), suma(min_filas_restante)) --> no hacer (hacer para el final o la siguiente práctica)
+            4) Hacer una matriz en la que cada casilla tenga su coste minimo donde se va almacenando --> mejor cota (poda por memoizacion)
+                    Antes rellenar la matriz con programción dinamica con tres movimientos como valores de inicio.
+
+*/
+
+int poda_memo(const vector<vector<int>>& mapa, int i, int j, vector<vector<int>>& memo) {
     int n = mapa.size();
     int m = mapa[0].size();
 
-    if (x == n - 1 && y == m - 1) {
-        // Encontrado el destino
-        if (cost < min_cost) {
-            min_cost = cost;
-        }
-        return;
+    // Inicializar memo si aún no tiene el tamaño adecuado
+    if (memo.empty()) {
+        memo.resize(n, vector<int>(m, -1));
     }
 
-    nvisit++;
-
-    if (path[x][y]) {
-        // Nodo ya visitado, no es prometedor
-        nnot_promising++;
-        nleaf++;
-        return;
+    // Verificar los límites de la matriz mapa y memo
+    if (i >= n || j >= m || i < 0 || j < 0) {
+        return INT_MAX;
     }
-
-    path[x][y] = true;
-    nexplored++;
-
-    // Explorar los movimientos válidos
-    for (int i = 0; i < 4; i++) {
-        int nx = x + dx[i];
-        int ny = y + dy[i];
-
-        if (nx >= 0 && nx < n && ny >= 0 && ny < m) {
-            backtrack(mapa, path, nx, ny, cost + mapa[nx][ny], min_cost, nvisit, nexplored, nleaf, nunfeasible, nnot_promising);
-        } else {
-            nunfeasible++;
-        }
+        
+    if (i == n - 1 && j == m - 1) {
+        return mapa[i][j];
     }
+    
+    if (memo[i][j] != -1) {
+        return memo[i][j];
+    }
+    
+    int right = poda_memo(mapa, i, j + 1, memo);
+    int down = poda_memo(mapa, i + 1, j, memo);
+    int diagonal = poda_memo(mapa, i + 1, j + 1, memo);
+    return 0;
 
-    path[x][y] = false; // Backtracking
+    memo[i][j] = mapa[i][j] + min({right, down, diagonal});
+    
+    return memo[i][j];
 }
 
-void mcp_bt(const vector<vector<int>>& mapa, vector<vector<bool>>& path, int& min_cost, int& nvisit, int& nexplored, int& nleaf, int& nunfeasible, int& nnot_promising) {    int n = mapa.size();
-    int m = mapa[0].size();
 
-    // Inicializar la matriz path con falsos
-    for (int i = 0; i < n; i++) {
-        for (int j = 0; j < m; j++) {
-            path[i][j] = false;
+
+int mcp_bt(vector<vector<int>>& mapa, int fila_objetivo, int columna_objetivo, int fila_actual, int columna_actual, vector<vector<int>>& memo, vector<vector<bool>>& path, int& Step, int& difficulty) {
+    // Definir los movimientos posibles en el tablero
+    static const int movimientos[8][2] = {{0, 1}, {0, -1}, {-1, 0}, {1, 0}, {-1, -1}, {1, -1}, {-1, 1}, {1, 1}};
+
+    // Aplicar el movimiento correspondiente al paso actual
+    fila_actual += movimientos[Step - 1][0];
+    columna_actual += movimientos[Step - 1][1];
+
+    // Si se alcanza la posición objetivo, retornar la dificultad acumulada hasta el momento
+    if (fila_actual == fila_objetivo && columna_actual == columna_objetivo) {
+        return difficulty + mapa[fila_actual][columna_actual];
+    }
+
+    // Verificar límites del tablero
+    if (fila_actual < 0 || fila_actual >= mapa.size() || columna_actual < 0 || columna_actual >= mapa[0].size()) {
+        return INT_MAX;
+    }
+
+    // Verificar si la posición actual ya ha sido visitada
+    if (path[fila_actual][columna_actual]) {
+        return INT_MAX;
+    }
+
+    // Verificar si se supera la cota superior almacenada en memo
+    if (memo[fila_actual][columna_actual] < difficulty) {
+        return INT_MAX;
+    }
+
+    // Marcar la posición actual como visitada
+    path[fila_actual][columna_actual] = true;
+
+    // Intentar realizar cada movimiento posible recursivamente
+    int min_difficulty = INT_MAX;
+    for (int i = 1; i <= 8; ++i) {
+        int new_difficulty = mcp_bt(mapa, fila_objetivo, columna_objetivo, fila_actual, columna_actual, memo, path, i, difficulty);
+        if (new_difficulty < min_difficulty) {
+            min_difficulty = new_difficulty;
         }
     }
 
-    min_cost = INT_MAX;
-    nvisit = 0;
-    nexplored = 0;
-    nleaf = 0;
-    nunfeasible = 0;
-    nnot_promising = 0;
+    // Desmarcar la posición actual antes de regresar
+    path[fila_actual][columna_actual] = false;
 
-    backtrack(mapa, path, 0, 0, 0, min_cost, nvisit, nexplored, nleaf, nunfeasible, nnot_promising);
+    // Actualizar la cota superior en memo
+    memo[fila_actual][columna_actual] = min_difficulty;
+
+    return min_difficulty;
 }
+
 
 int main(int argc, char *argv[]) {
     bool show_path_2D = false;
@@ -144,16 +210,19 @@ int main(int argc, char *argv[]) {
     t = clock();
 
     int n, m = 0;
-    vector<vector<int>> mapa = read_map(filename, n, m);
-    int min_cost, nvisit, nexplored, nleaf, nunfeasible, nnot_promising = 0;
+    vector<vector<int>> mapa, memo_matrix = read_map(filename, n, m);
+    int difficulty, nvisit, nexplored, nleaf, nunfeasible, nnot_promising = 0;
+    int fila_actual, columna_actual, steps = 0;
 
     vector<vector<bool>> path(n, vector<bool>(m, false));
-
-    mcp_bt(mapa, path, min_cost, nvisit, nexplored, nleaf, nunfeasible, nnot_promising);
+    
+    poda_memo(mapa, 0, 0, memo_matrix);
+    return 0;
+    mcp_bt(mapa, n ,m, fila_actual, columna_actual, memo_matrix, path, steps , difficulty);
     t = clock() - t;
 
-    cout << min_cost << endl;
-    cout << "<" << nvisit << " " << nexplored << " " << nleaf << " " << nunfeasible << " " << nnot_promising << ">" << endl; 
+    cout << difficulty << endl;
+    //cout << "<" << nvisit << " " << nexplored << " " << nleaf << " " << nunfeasible << " " << nnot_promising << ">" << endl; 
     cout << t;
     if (show_path_2D) {
     
