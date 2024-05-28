@@ -2,40 +2,39 @@
 
 #include <iostream>
 #include <vector>
-#include <queue>
-#include <unordered_map>
 #include <climits>
 #include <algorithm>
 #include <fstream>
 #include <iomanip>
 #include <ctime>
+#include <queue>
+#include <unordered_map>
 
 using namespace std;
 
 const int MAX_COST = INT_MAX;
 
-// Definición de movimientos posibles en 8 direcciones
 int dx[] = {-1, -1, 0, 1, 1, 1, 0, -1};
 int dy[] = {0, 1, 1, 1, 0, -1, -1, -1};
+int movesMap[3][3] = {
+    {8, 1, 2},
+    {7, 0, 3},
+    {6, 5, 4}
+};
 
-// Estructura que representa un nodo en el árbol de búsqueda
 struct Node {
     int row, col;
     int cost;
-    int depth;
-    Node* parent;
+    int optimistic_bound;
+    vector<int> path;  // Almacenamos el camino de movimientos
 
-    Node(int r, int c, int co, int d, Node* p) : row(r), col(c), cost(co), depth(d), parent(p) {}
-};
-
-// Comparador para la cola de prioridad, basado en el costo de los nodos
-struct CompareNode {
-    bool operator()(const Node* a, const Node* b) {
-        return a->cost > b->cost;
+    Node(int r, int c, int co, int ob, vector<int> p) : row(r), col(c), cost(co), optimistic_bound(ob), path(p) {}
+    
+    bool operator>(const Node& other) const {
+        return optimistic_bound > other.optimistic_bound;
     }
 };
 
-// Función para leer el mapa desde un archivo
 vector<vector<int>> read_map(const string& filename, int &n, int &m) {
     ifstream file(filename);
     file >> n >> m;
@@ -51,117 +50,119 @@ vector<vector<int>> read_map(const string& filename, int &n, int &m) {
     return map;
 }
 
-// Algoritmo para calcular un costo inicial utilizando DP con hasta 3 movimientos permitidos
-int dp_3_movements(const vector<vector<int>>& mapa, int n, int m) {
-    vector<vector<int>> dp(n, vector<int>(m, MAX_COST));
-    dp[0][0] = mapa[0][0];
+vector<vector<int>> precalcular_cota_pesimista(const vector<vector<int>>& mapa, int n, int m) {
+    vector<vector<int>> memo(n, vector<int>(m, MAX_COST));
+    memo[n-1][m-1] = mapa[n-1][m-1];
 
-    for (int i = 0; i < n; i++) {
-        for (int j = 0; j < m; j++) {
-            if (i == 0 && j == 0) continue;
-
+    for (int i = n-1; i >= 0; --i) {
+        for (int j = m-1; j >= 0; --j) {
+            if (i == n-1 && j == m-1) continue;
             int min_cost = MAX_COST;
-            for (int k = 0; k < 3; k++) {
-                int prev_i = i - dx[k];
-                int prev_j = j - dy[k];
-                if (prev_i >= 0 && prev_j >= 0) {
-                    min_cost = min(min_cost, dp[prev_i][prev_j]);
+            for (int k = 0; k < 8; ++k) {
+                int ni = i + dx[k];
+                int nj = j + dy[k];
+                if (ni >= 0 && ni < n && nj >= 0 && nj < m) {
+                    min_cost = min(min_cost, memo[ni][nj]);
                 }
             }
+            memo[i][j] = min_cost + mapa[i][j];
+        }
+    }
+    return memo;
+}
 
-            if (min_cost != MAX_COST) {
-                dp[i][j] = min_cost + mapa[i][j];
+vector<vector<int>> precalcular_cota_optimista(const vector<vector<int>>& mapa, int n, int m) {
+    vector<vector<int>> min_cost_map(n, vector<int>(m, MAX_COST));
+    for (int i = n - 1; i >= 0; --i) {
+        for (int j = m - 1; j >= 0; --j) {
+            if (i == n - 1 && j == m - 1) {
+                min_cost_map[i][j] = mapa[i][j];
+            } else {
+                int min_cost = MAX_COST;
+                for (int k = 0; k < 8; ++k) {
+                    int ni = i + dx[k];
+                    int nj = j + dy[k];
+                    if (ni >= 0 && ni < n && nj >= 0 && nj < m) {
+                        min_cost = min(min_cost, min_cost_map[ni][nj]);
+                    }
+                }
+                min_cost_map[i][j] = min(mapa[i][j], min_cost);
             }
         }
     }
-
-    return dp[n - 1][m - 1];
+    return min_cost_map;
 }
 
-// Función para calcular la cota optimista de un nodo
-int get_optimistic_bound(Node* node, const vector<vector<int>>& mapa, int n, int m) {
-    int remaining_rows = n - node->row - 1;
-    int remaining_cols = m - node->col - 1;
-    int min_remaining_cost = MAX_COST;
+int calcular_cota_optimista(int row, int col, int cost, const vector<vector<int>>& min_cost_map, int n, int m) {
+    return cost + min_cost_map[row][col];
+}
 
-    for (int i = node->row; i < n; i++) {
-        for (int j = node->col; j < m; j++) {
-            min_remaining_cost = min(min_remaining_cost, mapa[i][j]);
+void generateChildren(Node* node, const vector<vector<int>>& mapa, int n, int m, priority_queue<Node, vector<Node>, greater<Node>>& pq, vector<vector<bool>>& visited, const vector<vector<int>>& min_cost_map) {
+    int row = node->row;
+    int col = node->col;
+
+    for (int i = 0; i < 8; i++) {
+        int new_row = row + dx[i];
+        int new_col = col + dy[i];
+
+        if (new_row >= 0 && new_row < n && new_col >= 0 && new_col < m && !visited[new_row][new_col]) {
+            int new_cost = node->cost + mapa[new_row][new_col];
+            int optimistic_bound = calcular_cota_optimista(new_row, new_col, new_cost, min_cost_map, n, m);
+            vector<int> new_path = node->path;
+            new_path.push_back(movesMap[dx[i] + 1][dy[i] + 1]);
+            pq.emplace(new_row, new_col, new_cost, optimistic_bound, new_path);
         }
     }
-
-    return node->cost + min_remaining_cost * max(remaining_rows, remaining_cols);
 }
 
-// Algoritmo de ramificación y poda para encontrar el camino de costo mínimo
-void mcp_bb(const vector<vector<int>>& mapa, int n, int m, int& bestCost, vector<int>& bestPath,
-            unordered_map<int, int>& best_costs, int& n_visit, int& n_explored, int& n_leaf, int& n_unfeasible,
-            int& n_not_promising, int& n_promising_but_discarded, int& n_best_solution_updated_from_leafs,
-            int& n_best_solution_updated_from_pessimistic_bound) {
-    priority_queue<Node*, vector<Node*>, CompareNode> pq;
-    Node* initialNode = new Node(0, 0, mapa[0][0], 0, nullptr);
-    pq.push(initialNode);
+vector<int> bestMoves;
+
+void mcp_bb(const vector<vector<int>>& mapa, int n, int m, int& bestCost, vector<vector<bool>>& visited, const vector<vector<int>>& cota_pesimista, vector<vector<int>>& best_costs, int& n_visit, int& n_explored, int& n_leaf, int& n_unfeasible, int& n_not_promising, int& n_promising_but_discarded, int& n_best_solution_updated_from_leafs, int& n_best_solution_updated_from_pessimistic_bound, const vector<vector<int>>& min_cost_map) {
+    priority_queue<Node, vector<Node>, greater<Node>> pq;
+    pq.emplace(0, 0, mapa[0][0], calcular_cota_optimista(0, 0, mapa[0][0], min_cost_map, n, m), vector<int>{});
 
     while (!pq.empty()) {
-        Node* node = pq.top();
+        Node node = pq.top();
         pq.pop();
         n_visit++;
 
-        // Si el nodo es la meta, actualiza el mejor costo y el mejor camino
-        if (node->row == n - 1 && node->col == m - 1) {
+        if (node.row == n - 1 && node.col == m - 1) {
             n_leaf++;
             n_explored++;
-            if (node->cost < bestCost) {
-                bestCost = node->cost;
-                bestPath.clear();
-                Node* current = node;
-                while (current != nullptr) {
-                    bestPath.push_back(current->row * m + current->col);
-                    current = current->parent;
-                }
-                reverse(bestPath.begin(), bestPath.end());
+            if (node.cost < bestCost) {
+                bestCost = node.cost;
+                bestMoves = node.path;
                 n_best_solution_updated_from_leafs++;
             }
-            delete node;
             continue;
         }
 
-        int pos = node->row * m + node->col;
-        if (best_costs.count(pos) != 0 && node->cost >= best_costs[pos]) {
+        visited[node.row][node.col] = true;
+
+        int pessimistic_bound = cota_pesimista[node.row][node.col];
+        if (pessimistic_bound >= bestCost) {
             n_not_promising++;
-            delete node;
+            visited[node.row][node.col] = false;
             continue;
         }
-        best_costs[pos] = node->cost;
 
-        int optimistic_bound = get_optimistic_bound(node, mapa, n, m);
+        int optimistic_bound = node.optimistic_bound;
         if (optimistic_bound >= bestCost) {
             n_promising_but_discarded++;
-            delete node;
+            visited[node.row][node.col] = false;
             continue;
         }
 
         n_explored++;
 
-        // Expande los nodos hijos
-        for (int i = 0; i < 8; i++) {
-            int new_row = node->row + dx[i];
-            int new_col = node->col + dy[i];
-
-            if (new_row >= 0 && new_row < n && new_col >= 0 && new_col < m) {
-                int new_cost = node->cost + mapa[new_row][new_col];
-
-                if (new_cost >= bestCost) {
-                    n_unfeasible++;
-                    continue;
-                }
-
-                Node* child = new Node(new_row, new_col, new_cost, node->depth + 1, node);
-                pq.push(child);
-            }
+        if (node.cost >= best_costs[node.row][node.col]) {
+            visited[node.row][node.col] = false;
+            continue;
         }
+        best_costs[node.row][node.col] = node.cost;
 
-        delete node;
+        generateChildren(&node, mapa, n, m, pq, visited, min_cost_map);
+        visited[node.row][node.col] = false;
     }
 }
 
@@ -212,22 +213,22 @@ int main(int argc, char *argv[]) {
     clock_t start = clock();
 
     int n, m;
-    vector<vector<int>> mapa;
+    vector<vector<int>> mapa, cota_pesimista, min_cost_map;
     mapa = read_map(filename, n, m);
+    cota_pesimista = precalcular_cota_pesimista(mapa, n, m);
+    min_cost_map = precalcular_cota_optimista(mapa, n, m);
 
-    int bestCost = dp_3_movements(mapa, n, m);
-    vector<int> bestPath;
-    unordered_map<int, int> best_costs;
+    int bestCost = INT_MAX;
+    vector<vector<bool>> visited(n, vector<bool>(m, false));
+    vector<vector<int>> best_costs(n, vector<int>(m, INT_MAX));
 
     int n_visit = 0, n_explored = 0, n_leaf = 0, n_unfeasible = 0, n_not_promising = 0;
     int n_promising_but_discarded = 0, n_best_solution_updated_from_leafs = 0, n_best_solution_updated_from_pessimistic_bound = 0;
 
-    mcp_bb(mapa, n, m, bestCost, bestPath, best_costs, n_visit, n_explored, n_leaf,
-           n_unfeasible, n_not_promising, n_promising_but_discarded, n_best_solution_updated_from_leafs,
-           n_best_solution_updated_from_pessimistic_bound);
+    mcp_bb(mapa, n, m, bestCost, visited, cota_pesimista, best_costs, n_visit, n_explored, n_leaf, n_unfeasible, n_not_promising, n_promising_but_discarded, n_best_solution_updated_from_leafs, n_best_solution_updated_from_pessimistic_bound, min_cost_map);
 
     clock_t end = clock();
-    float time = float(end - start) / CLOCKS_PER_SEC * 1000;
+    float time = float(end - start) * 1000 / CLOCKS_PER_SEC;
 
     cout << bestCost << endl;
     cout << n_visit << " " << n_explored << " " << n_leaf << " " << n_unfeasible << " " << n_not_promising << " "
@@ -237,10 +238,31 @@ int main(int argc, char *argv[]) {
 
     if (show_path_2D) {
         vector<vector<char>> path(n, vector<char>(m, '.'));
+        int row = 0, col = 0;
+        path[row][col] = 'x';
 
-        for (int pos : bestPath) {
-            int row = pos / m;
-            int col = pos % m;
+        for (int move : bestMoves) {
+            if (move == 1) {
+                row--;
+            } else if (move == 2) {
+                row--;
+                col++;
+            } else if (move == 3) {
+                col++;
+            } else if (move == 4) {
+                row++;
+                col++;
+            } else if (move == 5) {
+                row++;
+            } else if (move == 6) {
+                row++;
+                col--;
+            } else if (move == 7) {
+                col--;
+            } else if (move == 8) {
+                row--;
+                col--;
+            }
             path[row][col] = 'x';
         }
 
@@ -256,32 +278,8 @@ int main(int argc, char *argv[]) {
 
     if (show_path_p) {
         cout << "<";
-        for (size_t i = 0; i < bestPath.size() - 1; i++) {
-            int curr_pos = bestPath[i];
-            int next_pos = bestPath[i + 1];
-            int curr_row = curr_pos / m;
-            int curr_col = curr_pos % m;
-            int next_row = next_pos / m;
-            int next_col = next_pos % m;
-            int row_diff = next_row - curr_row;
-            int col_diff = next_col - curr_col;
-            if (row_diff == -1 && col_diff == 0) {
-                cout << "1";
-            } else if (row_diff == -1 && col_diff == 1) {
-                cout << "2";
-            } else if (row_diff == 0 && col_diff == 1) {
-                cout << "3";
-            } else if (row_diff == 1 && col_diff == 1) {
-                cout << "4";
-            } else if (row_diff == 1 && col_diff == 0) {
-                cout << "5";
-            } else if (row_diff == 1 && col_diff == -1) {
-                cout << "6";
-            } else if (row_diff == 0 && col_diff == -1) {
-                cout << "7";
-            } else if (row_diff == -1 && col_diff == -1) {
-                cout << "8";
-            }
+        for (int move : bestMoves) {
+            cout << move;
         }
         cout << ">" << endl;
     }
